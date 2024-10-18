@@ -1,54 +1,112 @@
 import 'package:flutter/material.dart';
+import '../services/currency_service.dart';
+import '../services/location_service.dart';
+import '../widgets/glass_container.dart';
+import '../widgets/glossy_button.dart';
+import '../widgets/three_d_container.dart';
+import 'package:geolocator/geolocator.dart';
 
-class CurrencyConverterScreen extends StatelessWidget {
+class CurrencyConverterScreen extends StatefulWidget {
   const CurrencyConverterScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final knobSize = 306.0; // Уменьшено на 15% от предыдущего размера (360)
-    final screenHeight = 400.0;
+  _CurrencyConverterScreenState createState() => _CurrencyConverterScreenState();
+}
 
+class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
+  List<String> topCurrencies = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrencies();
+  }
+
+  Future<void> _loadCurrencies() async {
+    try {
+      Position position = await LocationService.determinePosition();
+      List<String> currencies = await CurrencyService.getTopCurrencies(position);
+      setState(() {
+        topCurrencies = currencies;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading currencies: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: Stack(
-        children: [
-          Positioned(
-            top: screenSize.height * 0.10, // Сдвинуто на 15% вниз по вертикали
-            left: 0, // Заполняет весь экран по горизонтали
-            right: 0, // Заполняет весь экран по горизонтали
-            child: Container(
-              height: screenHeight,
-              decoration: BoxDecoration(
-                color: Colors.blue[50], // Бледно-голубой фон
-                border: Border.all(color: Colors.black, width: 2), // Черная рамка
-              ),
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.grey[300]!, Colors.grey[100]!],
           ),
-          Positioned(
-            bottom: screenSize.height * 0.05, // Сдвинуто вниз на 10% (было 0.1, стало 0.05)
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                width: knobSize,
-                height: knobSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.grey[200], // Простой серый фон
-                  border: Border.all(color: Colors.black, width: 2), // Черная рамка
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.power_settings_new,
-                    size: knobSize * 0.25,
-                    color: Colors.blue[400],
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: ThreeDContainer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.lightBlue[50]!.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: GlassContainer(
+                        child: isLoading
+                            ? Center(child: CircularProgressIndicator())
+                            : GridView.builder(
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            childAspectRatio: 1.5,
+                          ),
+                          itemCount: topCurrencies.length,
+                          itemBuilder: (context, index) {
+                            return Card(
+                              color: Colors.white.withOpacity(0.7),
+                              child: Center(
+                                child: Text(
+                                  topCurrencies[index],
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+              Expanded(
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: GlossyButton(
+                    onPressed: _loadCurrencies,
+                    child: Center(
+                      child: Text(
+                        'MM',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
